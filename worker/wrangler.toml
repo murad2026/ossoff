@@ -1,0 +1,17 @@
+name = "draft-ossoff-api"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+[vars]
+# Comma-separated list of sites allowed to call the API (your GitHub Pages URL and custom domain).
+ALLOWED_ORIGINS = "https://murad2026.github.io"
+# Fast, low-cost model for moderation. Change if you want a stronger one.
+CLAUDE_MODEL = "claude-haiku-5-5"
+
+# Secrets (set with `npx wrangler secret put NAME`, never commit them):
+#   ANTHROPIC_API_KEY     — from console.anthropic.com
+#   SUPABASE_URL          — https://xxxx.supabase.co
+#   SUPABASE_SERVICE_KEY  — Supabase "service_role" key
+#   HASH_SALT             — any long random string
+#   ADMIN_TOKEN           — long random string for the moderator page
+#   TURNSTILE_SECRET      — optional, Cloudflare Turnstile captcha secret

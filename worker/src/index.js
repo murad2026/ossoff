@@ -1,0 +1,268 @@
+// Draft Ossoff 2028 — API worker (Cloudflare Workers)
+// Routes:
+//   POST /api/review          -> AI moderation + suggestions (nothing stored)
+//   POST /api/submit          -> re-moderates final text, stores story + signup
+//   GET  /api/stories         -> latest approved stories
+//   GET  /api/stats           -> counts for the tally board
+//   GET  /api/ref/:code       -> how many people a supporter brought in
+//   GET  /api/admin/queue     -> pending stories (needs ADMIN_TOKEN)
+//   POST /api/admin/decide    -> approve / reject a pending story (needs ADMIN_TOKEN)
+
+import { moderate, TAGS } from './moderation.js';
+import { db } from './supabase.js';
+import { normalize, sha256, refCode, signals } from './util.js';
+
+const STATES = new Set(['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','PR','Abroad']);
+const MAX_TEXT = 600;
+const SUBMITS_PER_HOUR = 3;
+const REVIEWS_PER_HOUR = 15;
+
+export default {
+  async fetch(req, env) {
+    const cors = corsHeaders(req, env);
+    if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+    try {
+      const res = await route(req, env);
+      for (const [k, v] of Object.entries(cors)) res.headers.set(k, v);
+      return res;
+    } catch (e) {
+      console.error(e);
+      return json({ error: 'server_error' }, 500, cors);
+    }
+  }
+};
+
+async function route(req, env) {
+  const url = new URL(req.url);
+  const p = url.pathname.replace(/\/+$/, '');
+  const ip = req.headers.get('CF-Connecting-IP') || '0.0.0.0';
+  const ipHash = await sha256(ip + (env.HASH_SALT || ''));
+
+  if (req.method === 'POST' && p === '/api/pledge') return pledge(req, env, ipHash);
+  if (req.method === 'POST' && p === '/api/review') return review(req, env, ipHash);
+  if (req.method === 'POST' && p === '/api/submit') return submit(req, env, ipHash);
+  if (req.method === 'GET' && p === '/api/stories') return stories(env, url);
+  if (req.method === 'GET' && p === '/api/stats') return stats(env);
+  if (req.method === 'GET' && p.startsWith('/api/ref/')) return refCount(env, p.split('/').pop());
+  if (p.startsWith('/api/admin/')) {
+    const me = await whoIs(req, env);
+    if (!me) return json({ error: 'unauthorized' }, 401);
+    if (req.method === 'GET' && p === '/api/admin/me') return json(me);
+    if (req.method === 'GET' && p === '/api/admin/queue') return queue(env, url);
+    if (req.method === 'POST' && p === '/api/admin/decide') return decide(req, env, me);
+    if (req.method === 'GET' && p === '/api/admin/log') return json(await db(env).select('mod_actions', 'select=*&order=created_at.desc&limit=100'));
+    if (p === '/api/admin/moderators') {
+      if (me.role === 'moderator') return json({ error: 'forbidden' }, 403);
+      if (req.method === 'GET') return json(await db(env).select('moderators', 'select=id,name,role,active,created_at&order=created_at.asc'));
+      if (req.method === 'POST') return manageModerators(req, env, me);
+    }
+  }
+  return json({ error: 'not_found' }, 404);
+}
+
+// ---------- handlers ----------
+
+// Step 1 of the ladder: one click — "Do you support Jon Ossoff running in 2028?"
+// One answer per network (re-clicking just changes it), no personal data.
+async function pledge(req, env, ipHash) {
+  const b = await readJson(req);
+  const answer = ['yes', 'unsure'].includes(b.answer) ? b.answer : null;
+  if (!answer) return json({ error: 'bad_request' }, 400);
+  const state = STATES.has(b.state) ? b.state : null;
+  const r = await fetch(env.SUPABASE_URL.replace(/\/+$/, '') + '/rest/v1/pledges?on_conflict=ip_hash', {
+    method: 'POST',
+    headers: {
+      apikey: env.SUPABASE_SERVICE_KEY, Authorization: 'Bearer ' + env.SUPABASE_SERVICE_KEY,
+      'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal'
+    },
+    body: JSON.stringify({ ip_hash: ipHash, answer, state, updated_at: new Date().toISOString() })
+  });
+  if (!r.ok) throw new Error('pledge ' + r.status + ' ' + await r.text());
+  const yes = await db(env).count('pledges', 'answer=eq.yes');
+  return json({ ok: true, answer, yes });
+}
+
+async function review(req, env, ipHash) {
+  const body = await readJson(req);
+  const text = clean(body.text);
+  if (text.length < 20) return json({ error: 'too_short', message: 'Write at least a sentence or two.' }, 400);
+  if (!(await turnstileOk(env, body.turnstile, req))) return json({ error: 'captcha' }, 403);
+  if (!(await underLimit(env, 'review', ipHash, REVIEWS_PER_HOUR))) return json({ error: 'rate_limited', message: 'Too many checks — try again in an hour.' }, 429);
+
+  const sig = signals(text);
+  const ai = await moderate(env, text);
+  return json({ ...ai, signals: sig });
+}
+
+async function submit(req, env, ipHash) {
+  const b = await readJson(req);
+  const text = clean(b.text);
+  const firstName = clean(b.firstName).slice(0, 40);
+  const state = STATES.has(b.state) ? b.state : null;
+  const email = String(b.email || '').trim().toLowerCase().slice(0, 200);
+  const referredBy = /^[A-Z0-9]{6}$/.test(b.ref || '') ? b.ref : null;
+  const appeal = b.appeal === true;
+
+  if (text.length < 20 || !firstName || !state) return json({ error: 'missing_fields' }, 400);
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ error: 'bad_email' }, 400);
+  if (b.consent !== true) return json({ error: 'consent_required' }, 400);
+  if (!(await turnstileOk(env, b.turnstile, req))) return json({ error: 'captcha' }, 403);
+  if (!(await underLimit(env, 'submit', ipHash, SUBMITS_PER_HOUR))) return json({ error: 'rate_limited', message: 'Too many posts from this network — try again later.' }, 429);
+
+  // Troll / bot signals that don't need AI
+  const textHash = await sha256(normalize(text));
+  const dup = await db(env).select('stories', `text_hash=eq.${textHash}&select=id&limit=1`);
+  const emailHash = await sha256(email);
+  const already = await db(env).select('stories', `email_hash=eq.${emailHash}&status=neq.rejected&select=id,ref_code&limit=1`);
+  if (already.length) return json({ error: 'already_posted', message: 'This email already has a story on the wall.', refCode: already[0].ref_code }, 409);
+
+  // Always re-moderate the final text on the server (never trust the browser)
+  const ai = await moderate(env, text);
+  const sig = signals(text);
+  if (dup.length) sig.push('duplicate_text');
+
+  let status;
+  if (ai.verdict === 'publish' && !sig.includes('duplicate_text') && !sig.includes('link_spam')) status = 'approved';
+  else if (ai.verdict === 'reject' && !appeal) return json({ error: 'rejected', reason: ai.reason, category: ai.category }, 422);
+  else status = 'pending'; // needs a human: borderline, duplicate, link spam, or an appeal
+
+  const code = await uniqueRef(env);
+  const row = {
+    first_name: firstName, state, text, headline: ai.headline, tags: ai.tags,
+    status, ai_verdict: ai.verdict, ai_reason: ai.reason, ai_category: ai.category,
+    signals: sig, appeal, ref_code: code, referred_by: referredBy,
+    text_hash: textHash, email_hash: emailHash, ip_hash: ipHash
+  };
+  await db(env).insert('stories', row);
+  await db(env).upsert('signups', { email, first_name: firstName, state, ref_code: code, referred_by: referredBy, consent: true }, 'email');
+
+  return json({ ok: true, status, refCode: code, headline: ai.headline, tags: ai.tags });
+}
+
+async function stories(env, url) {
+  const limit = Math.min(Number(url.searchParams.get('limit')) || 30, 60);
+  const state = url.searchParams.get('state');
+  let q = `status=eq.approved&select=id,created_at,first_name,state,text,headline,tags&order=created_at.desc&limit=${limit}`;
+  if (state && STATES.has(state)) q += `&state=eq.${state}`;
+  return json(await db(env).select('stories', q), 200, { 'Cache-Control': 'public, max-age=30' });
+}
+
+async function stats(env) {
+  const [yes, stories, signups, states] = await Promise.all([
+    db(env).count('pledges', 'answer=eq.yes'),
+    db(env).count('stories', 'status=eq.approved'),
+    db(env).count('signups', ''),
+    db(env).select('state_counts', 'select=state,n&order=n.desc')
+  ]);
+  return json({ yes, stories, signups, states }, 200, { 'Cache-Control': 'public, max-age=60' });
+}
+
+async function refCount(env, code) {
+  if (!/^[A-Z0-9]{6}$/.test(code)) return json({ error: 'bad_code' }, 400);
+  return json({ code, recruited: await db(env).count('signups', `referred_by=eq.${code}`) });
+}
+
+// ---------- moderation team ----------
+// Roles: owner (ADMIN_TOKEN secret) > admin (manages the team) > moderator (reviews posts).
+// Each person gets a personal token; only its hash is stored. Every decision is logged.
+
+async function whoIs(req, env) {
+  const auth = req.headers.get('Authorization') || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  if (!token) return null;
+  if (env.ADMIN_TOKEN && token === env.ADMIN_TOKEN) return { id: null, name: 'Owner', role: 'owner' };
+  const hash = await sha256('mod:' + token);
+  const rows = await db(env).select('moderators', `token_hash=eq.${hash}&active=eq.true&select=id,name,role&limit=1`);
+  return rows[0] || null;
+}
+
+async function queue(env, url) {
+  const status = ['pending', 'approved', 'rejected', 'hidden'].includes(url.searchParams.get('status')) ? url.searchParams.get('status') : 'pending';
+  const order = status === 'pending' ? 'asc' : 'desc';
+  return json(await db(env).select('stories', `status=eq.${status}&select=id,created_at,first_name,state,text,headline,tags,ai_verdict,ai_reason,ai_category,signals,appeal,reviewed_by&order=created_at.${order}&limit=100`));
+}
+
+async function decide(req, env, me) {
+  const b = await readJson(req);
+  if (!['approved', 'rejected', 'hidden'].includes(b.status) || !b.id) return json({ error: 'bad_request' }, 400);
+  const id = encodeURIComponent(b.id);
+  const note = clean(b.note).slice(0, 300);
+  await db(env).update('stories', `id=eq.${id}`, { status: b.status, reviewed_at: new Date().toISOString(), reviewed_by: me.name });
+  await db(env).insert('mod_actions', { story_id: b.id, moderator_id: me.id, moderator_name: me.name, action: b.status, note });
+  return json({ ok: true });
+}
+
+async function manageModerators(req, env, me) {
+  const b = await readJson(req);
+  if (b.action === 'create') {
+    const name = clean(b.name).slice(0, 60);
+    const role = b.role === 'admin' && me.role === 'owner' ? 'admin' : 'moderator';
+    if (!name) return json({ error: 'name_required' }, 400);
+    const token = [...crypto.getRandomValues(new Uint8Array(24))].map(x => x.toString(16).padStart(2, '0')).join('');
+    await db(env).insert('moderators', { name, role, token_hash: await sha256('mod:' + token), active: true });
+    await db(env).insert('mod_actions', { moderator_id: me.id, moderator_name: me.name, action: 'add_' + role, note: name });
+    return json({ ok: true, name, role, token }); // shown once — hand it to the person privately
+  }
+  if (b.action === 'deactivate' && b.id) {
+    await db(env).update('moderators', `id=eq.${encodeURIComponent(b.id)}`, { active: false });
+    await db(env).insert('mod_actions', { moderator_id: me.id, moderator_name: me.name, action: 'remove_member', note: String(b.id) });
+    return json({ ok: true });
+  }
+  return json({ error: 'bad_request' }, 400);
+}
+
+// ---------- helpers ----------
+
+function clean(s) { return String(s || '').replace(/\s+/g, ' ').trim().slice(0, MAX_TEXT); }
+
+async function readJson(req) {
+  try { return await req.json(); } catch { return {}; }
+}
+
+function json(data, status = 200, headers = {}) {
+  return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...headers } });
+}
+
+function corsHeaders(req, env) {
+  const origin = req.headers.get('Origin') || '';
+  const allowed = (env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+  const ok = allowed.length === 0 || allowed.includes(origin);
+  return {
+    'Access-Control-Allow-Origin': ok ? (origin || '*') : allowed[0],
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Vary': 'Origin'
+  };
+}
+
+async function turnstileOk(env, token, req) {
+  if (!env.TURNSTILE_SECRET) return true; // captcha is optional
+  if (!token) return false;
+  const form = new FormData();
+  form.append('secret', env.TURNSTILE_SECRET);
+  form.append('response', token);
+  form.append('remoteip', req.headers.get('CF-Connecting-IP') || '');
+  const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body: form });
+  const d = await r.json();
+  return d.success === true;
+}
+
+// Simple fixed-window rate limit stored in Supabase (works across all worker instances)
+async function underLimit(env, kind, ipHash, max) {
+  const since = new Date(Date.now() - 3600_000).toISOString();
+  const n = await db(env).count('rate_events', `ip_hash=eq.${ipHash}&kind=eq.${kind}&created_at=gte.${since}`);
+  if (n >= max) return false;
+  await db(env).insert('rate_events', { ip_hash: ipHash, kind });
+  return true;
+}
+
+async function uniqueRef(env) {
+  for (let i = 0; i < 5; i++) {
+    const c = refCode();
+    const hit = await db(env).select('stories', `ref_code=eq.${c}&select=id&limit=1`);
+    if (!hit.length) return c;
+  }
+  throw new Error('could not mint ref code');
+}
+
+export { TAGS };
