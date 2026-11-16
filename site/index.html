@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Draft Ossoff 2028 — Run, Jon, Run</title>
+<meta name="description" content="An unofficial grassroots movement asking Sen. Jon Ossoff to run for President in 2028. Add your voice.">
+<meta property="og:title" content="Run, Jon, Run — Draft Ossoff 2028">
+<meta property="og:description" content="Do you support Jon Ossoff running for President in 2028? One click to say so.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Source+Serif+4:ital,wght@0,600;1,500&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="styles.css">
+<script src="config.js"></script>
+</head>
+<body>
+
+<div class="disclaimer">
+  <strong>Unofficial fan site.</strong> Not affiliated with, authorized or endorsed by Sen. Jon Ossoff or any campaign. He has said he is not running in 2028 — we're respectfully asking him to reconsider.
+</div>
+<div class="demo" id="demoBar" hidden>Demo mode — answers and stories are saved only in this browser until the API is connected.</div>
+
+<header class="top">
+  <a class="logo" href="#top" aria-label="Draft Ossoff 2028 home">
+    <span class="logo-draft">Draft</span>
+    <span class="logo-name">Ossoff</span>
+    <svg class="logo-star" viewBox="0 0 24 24" aria-hidden="true"><use href="#star"/></svg>
+    <span class="logo-year">2028</span>
+  </a>
+  <nav aria-label="Sections">
+    <a href="#voice">Add your voice</a>
+    <a href="#tally">The tally</a>
+    <a href="#wall">Voices</a>
+    <a href="#why">Why Jon</a>
+    <a href="#rules">How we moderate</a>
+  </nav>
+</header>
+
+<!-- STEP 1: the simplest ask -->
+<section class="hero" id="top">
+  <div class="stars-field" aria-hidden="true"></div>
+  <div class="hero-inner">
+    <p class="kicker">A grassroots draft movement · 2028</p>
+    <h1>Run, Jon,<br>run.</h1>
+    <div class="ask" id="ask">
+      <h2 class="ask-q">Do you support Jon Ossoff running for President in 2028?</h2>
+      <div class="ask-buttons" id="askButtons">
+        <button class="btn btn-red btn-big" data-answer="yes" type="button">Yes — count me in</button>
+        <button class="btn btn-ghost btn-big" data-answer="unsure" type="button">Not sure yet</button>
+      </div>
+      <div class="ask-done" id="askDone" hidden>
+        <p class="ask-thanks" id="askThanks"></p>
+        <label class="inline-label" for="pledgeState">Where are you voting from?</label>
+        <div class="row">
+          <select id="pledgeState" class="select"></select>
+          <a class="btn btn-red" href="#voice">Next: tell Jon why</a>
+        </div>
+      </div>
+      <p class="form-msg" id="askMsg" role="status"></p>
+      <p class="ask-count"><span id="yesCount">—</span> Americans have said yes</p>
+    </div>
+  </div>
+  <div class="bunting" aria-hidden="true"></div>
+</section>
+
+<!-- The ladder -->
+<section class="ladder band" aria-labelledby="ladderTitle">
+  <h2 id="ladderTitle" class="section-title">Six steps. Two years. One ask.</h2>
+  <ol class="steps" id="steps">
+    <li data-step="1"><b>Say yes</b><span>One click above.</span></li>
+    <li data-step="2"><b>Tell Jon why</b><span>Two or three sentences in your words.</span></li>
+    <li data-step="3"><b>Share your card</b><span>Post it from your own account.</span></li>
+    <li data-step="4"><b>Bring a friend</b><span>Use your personal link.</span></li>
+    <li data-step="5"><b>Host a meetup</b><span>Coffee, a porch, a campus room.</span></li>
+    <li data-step="6"><b>Deliver the letter</b><span>Together, before candidates file.</span></li>
+  </ol>
+</section>
+
+<!-- STEPS 2–4: story tool -->
+<section class="band voice" id="voice" aria-labelledby="voiceTitle">
+  <div class="voice-grid">
+    <div class="voice-form">
+      <h2 id="voiceTitle" class="section-title">Tell Jon why</h2>
+      <p class="lead">Why do you want him to run? A moment from your life, a fight you care about, what you'd want him to fix. Our AI checker suggests a tighter version and keeps the wall civil — you always choose what gets posted.</p>
+
+      <form id="storyForm" novalidate>
+        <label for="storyText">Your message to Jon</label>
+        <textarea id="storyText" rows="5" maxlength="600" placeholder="I'm a nurse in Macon. I want someone in the White House who…" required></textarea>
+        <div class="counter"><span id="charCount">0</span> / 600</div>
+
+        <div class="cf-turnstile-slot" id="turnstileSlot"></div>
+        <button class="btn btn-navy" type="submit" id="checkBtn">Check my message</button>
+        <p class="form-msg" id="checkMsg" role="status"></p>
+      </form>
+
+      <div class="review" id="reviewBox" hidden>
+        <div class="verdict" id="verdict"></div>
+        <div class="tags" id="tagList"></div>
+
+        <fieldset class="choose" id="chooseBox">
+          <legend>Which version should we post?</legend>
+          <label class="choice"><input type="radio" name="version" value="polished" checked> <span><b>Suggested</b><em id="polishedText"></em></span></label>
+          <label class="choice"><input type="radio" name="version" value="mine"> <span><b>My original</b><em id="originalText"></em></span></label>
+        </fieldset>
+
+        <form id="submitForm" novalidate>
+          <div class="two">
+            <div><label for="firstName">First name</label><input id="firstName" autocomplete="given-name" maxlength="40" required></div>
+            <div><label for="state">State</label><select id="state" class="select" required></select></div>
+          </div>
+          <label for="email">Email <small>(private — never shown or sold)</small></label>
+          <input id="email" type="email" autocomplete="email" maxlength="200" required>
+          <label class="check"><input type="checkbox" id="consent"> I understand this is an unofficial supporter site, and I'm OK getting occasional updates from it.</label>
+          <button class="btn btn-red" type="submit" id="submitBtn">Post my message</button>
+          <p class="form-msg" id="submitMsg" role="status"></p>
+        </form>
+      </div>
+    </div>
+
+    <div class="voice-card">
+      <div class="card-frame">
+        <canvas id="card" width="1080" height="1080" aria-label="Preview of your share card"></canvas>
+      </div>
+      <div class="share" id="shareBox" hidden>
+        <p class="share-title">Your card is ready</p>
+        <p class="share-ref">Your personal link: <a id="refLink" href="#"></a></p>
+        <p class="share-ref" id="refStats"></p>
+        <div class="row wrap">
+          <button class="btn btn-red" type="button" id="shareBtn">Share</button>
+          <button class="btn btn-navy" type="button" id="downloadBtn">Download card</button>
+          <button class="btn btn-outline" type="button" id="copyBtn">Copy text + link</button>
+        </div>
+      </div>
+      <p class="card-note">Preview updates as you write. Cards say “unofficial supporter card” so no one mistakes them for a campaign.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Tally -->
+<section class="band tally" id="tally" aria-labelledby="tallyTitle">
+  <h2 id="tallyTitle" class="section-title light">The tally</h2>
+  <div class="tally-nums">
+    <div><span class="big" id="tYes">—</span><span>said yes</span></div>
+    <div><span class="big" id="tStories">—</span><span>stories on the wall</span></div>
+    <div><span class="big" id="tStates">—</span><span>of 50 states + DC</span></div>
+  </div>
+  <div class="state-grid" id="stateGrid" aria-label="States with at least one story"></div>
+</section>
+
+<!-- Wall -->
+<section class="band wall" id="wall" aria-labelledby="wallTitle">
+  <div class="wall-head">
+    <h2 id="wallTitle" class="section-title">Voices for Jon</h2>
+    <select id="wallFilter" class="select" aria-label="Filter by state"></select>
+  </div>
+  <div class="wall-grid" id="wallGrid"></div>
+  <p class="empty" id="wallEmpty" hidden>No stories here yet. Be the first — scroll up and tell Jon why.</p>
+</section>
+
+<!-- Why Jon -->
+<section class="band why" id="why" aria-labelledby="whyTitle">
+  <h2 id="whyTitle" class="section-title">Why Jon</h2>
+  <p class="lead">Facts from the public record. Sources at the bottom of the page.</p>
+  <div class="why-grid">
+    <article><h3>Took on congressional stock trading</h3><p>Wrote the Ban Congressional Stock Trading Act with Sen. Mark Kelly and put his own portfolio in a blind trust. In 2024 a bipartisan version became the first such ban to pass a Senate committee.</p></article>
+    <article><h3>Gets laws passed</h3><p>Passed more standalone bills into law in his first two years than any other freshman senator — most with Republican partners.</p></article>
+    <article><h3>Investigates abuse</h3><p>As chair of the Permanent Subcommittee on Investigations he probed federal prisons, military family housing and immigration detention.</p></article>
+    <article><h3>Backed the bipartisan border deal</h3><p>Supported the 2024 bipartisan border security bill and kept pressing both parties to pass it after it was blocked.</p></article>
+    <article><h3>Stands with allies</h3><p>Voted to advance the 2024 national security package with aid for Ukraine, Israel and Taiwan.</p></article>
+    <article><h3>Journalist turned senator</h3><p>Born in Georgia in 1987. Elected in 2021 as the youngest sitting U.S. senator and re-elected in 2026.</p></article>
+  </div>
+</section>
+
+<!-- Moderation rules -->
+<section class="band rules" id="rules" aria-labelledby="rulesTitle">
+  <h2 id="rulesTitle" class="section-title">How we moderate</h2>
+  <div class="rules-grid">
+    <div><h3>Tone, not views</h3><p>Civil disagreement stays up. Insults, threats, hate, spam and fake quotes come down — whoever posts them.</p></div>
+    <div><h3>AI checks, people decide</h3><p>An AI flags problems and suggests edits. Anything borderline goes to a volunteer moderator, and every decision is logged.</p></div>
+    <div><h3>You can appeal</h3><p>If your post is turned down, you'll see why and can ask a human to look again.</p></div>
+    <div><h3>Your data stays yours</h3><p>Emails are private and never sold. We publish only your first name, state and message.</p></div>
+  </div>
+</section>
+
+<footer class="foot band">
+  <p class="foot-title">Sources</p>
+  <ul class="sources">
+    <li><a href="https://www.ossoff.senate.gov/about">Sen. Ossoff — official Senate biography</a></li>
+    <li><a href="https://www.ossoff.senate.gov/press-releases/sens-ossoff-kelly-introduce-bill-banning-stock-trading-by-members-of-congress">Ban Congressional Stock Trading Act — press release</a></li>
+    <li><a href="https://www.wabe.org/?p=613424">WABE — stock trading ban advances (2024)</a></li>
+    <li><a href="https://www.ajc.com/politics/2026/08/georgia-us-senate-candidates-2026-whos-running/">AJC — Georgia U.S. Senate candidates 2026</a></li>
+    <li><a href="https://nowgeorgia.com/?p=306262">Georgia Recorder — the bipartisan border bill</a></li>
+    <li><a href="https://www.ajc.com/politics/senate-votes-down-border-bill-pursues-possible-plan-to-aid-israel-ukraine/TS5JFFNUS5AZFI4EBGEXTX4BIE">AJC — border bill and aid package (2024)</a></li>
+  </ul>
+  <p class="legal" id="legal"></p>
+</footer>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="star" viewBox="0 0 24 24"><path d="M12 1.8l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9l7.1-.6z"/></symbol>
+</svg>
+
+<script src="app.js"></script>
+</body>
+</html>
