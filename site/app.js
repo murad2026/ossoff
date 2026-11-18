@@ -44,6 +44,13 @@
 
   // ---------- setup ----------
   if (DEMO) $('#demoBar').hidden = false;
+  if (CFG.HERO_PHOTO) {
+    const img = new Image();
+    img.alt = 'Sen. Jon Ossoff';
+    img.onload = () => { $('#portrait').classList.add('has-photo'); $('#portrait').prepend(img); };
+    img.src = CFG.HERO_PHOTO;
+    $('#photoCredit').textContent = CFG.HERO_PHOTO_CREDIT || '';
+  }
   $('#legal').textContent = `Unofficial supporter site run by ${CFG.ORG_NAME || 'volunteers'}. Not authorized by any candidate or candidate's committee. No photos or logos of Sen. Ossoff are used. Contact: ${CFG.CONTACT_EMAIL || ''}`;
   const opts = (first) => `<option value="">${first}</option>` + STATES.map(([c, n]) => `<option value="${c}">${n}</option>`).join('') + '<option value="Abroad">Living abroad</option>';
   $('#pledgeState').innerHTML = opts('Choose your state');
