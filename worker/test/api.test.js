@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import worker from '../src/index.js';
 
 function fakeBackend(aiReply) {
-  const tables = { stories: [], signups: [], pledges: [], rate_events: [], moderators: [], mod_actions: [] };
+  const tables = { stories: [], signups: [], pledges: [], rate_events: [], moderators: [], mod_actions: [], volunteers: [] };
   globalThis.fetch = async (url, init = {}) => {
     url = String(url);
     if (url.includes('anthropic.com')) return new Response(JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(aiReply) }] }), { status: 200 });
@@ -13,7 +13,7 @@ function fakeBackend(aiReply) {
     const filt = [...u.searchParams].filter(([k]) => !['select','order','limit','on_conflict'].includes(k));
     const match = (r) => filt.every(([k, v]) => { const [op, val] = [v.split('.')[0], v.split('.').slice(1).join('.')];
       if (op === 'eq') return String(r[k]) === val; if (op === 'neq') return String(r[k]) !== val; if (op === 'gte') return true; return true; });
-    if (m === 'POST') { const b = JSON.parse(init.body); if (table === 'pledges') { const i = rows.findIndex(r => r.ip_hash === b.ip_hash); if (i >= 0) rows[i] = b; else rows.push(b); } else rows.push({ id: crypto.randomUUID(), created_at: new Date().toISOString(), ...b }); tables[table] = rows; return new Response(null, { status: 201 }); }
+    if (m === 'POST') { const b = JSON.parse(init.body); if (table === 'pledges') { const i = rows.findIndex(r => r.ip_hash === b.ip_hash); if (i >= 0) rows[i] = b; else rows.push(b); } else if (table === 'volunteers') { const i = rows.findIndex(r => r.email === b.email); const row = { id: crypto.randomUUID(), ...b }; if (i >= 0) rows[i] = row; else rows.push(row); } else rows.push({ id: crypto.randomUUID(), created_at: new Date().toISOString(), ...b }); tables[table] = rows; return new Response(null, { status: 201 }); }
     if (m === 'HEAD') { const n = rows.filter(match).length; return new Response(null, { status: 200, headers: { 'content-range': `0-0/${n}` } }); }
     if (m === 'PATCH') { const b = JSON.parse(init.body); rows.filter(match).forEach(r => Object.assign(r, b)); return new Response(null, { status: 204 }); }
     if (table === 'state_counts') { const by = {}; tables.stories.filter(s => s.status === 'approved').forEach(s => by[s.state] = (by[s.state] || 0) + 1); return Response.json(Object.entries(by).map(([state, n]) => ({ state, n }))); }
@@ -64,4 +64,18 @@ test('rejected posts are refused, appeals go to the queue, team + moderation', a
   await worker.fetch(req('/api/admin/decide', { id: q[0].id, status: 'rejected', note: 'insults' }, mod), env);
   assert.equal(t.stories[0].status, 'rejected'); assert.equal(t.stories[0].reviewed_by, 'Maria');
   assert.ok(t.mod_actions.some(a => a.action === 'rejected' && a.moderator_name === 'Maria'));
+});
+
+test('volunteer applications are private and admin-only', async () => {
+  const t = fakeBackend(good);
+  const bad = await worker.fetch(req('/api/volunteer', { name: 'Kim', email: 'kim@x.com', state: 'PA', roles: [], consent: true }), env);
+  assert.equal(bad.status, 400);
+  const ok = await worker.fetch(req('/api/volunteer', { name: 'Kim', email: 'kim@x.com', state: 'PA', roles: ['organizer', 'hacker'], hours: '3-5', consent: true }), env);
+  assert.equal(ok.status, 200);
+  assert.deepEqual(t.volunteers[0].roles, ['organizer']);
+  const owner = { Authorization: 'Bearer owner-secret' };
+  const mod = await (await worker.fetch(req('/api/admin/moderators', { action: 'create', name: 'Lee', role: 'moderator' }, owner), env)).json();
+  assert.equal((await worker.fetch(req('/api/admin/volunteers', null, { Authorization: 'Bearer ' + mod.token }), env)).status, 403);
+  const list = await (await worker.fetch(req('/api/admin/volunteers', null, owner), env)).json();
+  assert.equal(list.length, 1);
 });
