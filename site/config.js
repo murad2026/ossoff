@@ -15,8 +15,8 @@ window.SITE_CONFIG = {
   // license allows reuse — check the license and credit line). Put the file in site/img/ and set e.g.
   //   HERO_PHOTO: "img/ossoff.jpg", HERO_PHOTO_CREDIT: "Photo: Jane Doe / CC BY 4.0"
   // Empty = a star emblem is shown instead.
-  HERO_PHOTO: "",
-  HERO_PHOTO_CREDIT: "",
+  HERO_PHOTO: "img/ossoff.jpg",
+  HERO_PHOTO_CREDIT: "Photo: U.S. Senate Photographic Studio / Public domain",
 
   // Optional Cloudflare Turnstile captcha site key (pair with TURNSTILE_SECRET on the worker).
   TURNSTILE_SITEKEY: ""
