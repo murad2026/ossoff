@@ -39,6 +39,7 @@ async function route(req, env) {
   const ipHash = await sha256(ip + (env.HASH_SALT || ''));
 
   if (req.method === 'POST' && p === '/api/pledge') return pledge(req, env, ipHash);
+  if (req.method === 'POST' && p === '/api/volunteer') return volunteer(req, env, ipHash);
   if (req.method === 'POST' && p === '/api/review') return review(req, env, ipHash);
   if (req.method === 'POST' && p === '/api/submit') return submit(req, env, ipHash);
   if (req.method === 'GET' && p === '/api/stories') return stories(env, url);
@@ -50,6 +51,18 @@ async function route(req, env) {
     if (req.method === 'GET' && p === '/api/admin/me') return json(me);
     if (req.method === 'GET' && p === '/api/admin/queue') return queue(env, url);
     if (req.method === 'POST' && p === '/api/admin/decide') return decide(req, env, me);
+    if (req.method === 'GET' && p === '/api/admin/volunteers') {
+      if (me.role === 'moderator') return json({ error: 'forbidden' }, 403);
+      return json(await db(env).select('volunteers', 'select=*&order=created_at.desc&limit=500'));
+    }
+    if (req.method === 'POST' && p === '/api/admin/volunteer-status') {
+      if (me.role === 'moderator') return json({ error: 'forbidden' }, 403);
+      const b = await readJson(req);
+      if (!b.id || !['new', 'contacted', 'active', 'declined'].includes(b.status)) return json({ error: 'bad_request' }, 400);
+      await db(env).update('volunteers', `id=eq.${encodeURIComponent(b.id)}`, { status: b.status });
+      await db(env).insert('mod_actions', { moderator_id: me.id, moderator_name: me.name, action: 'volunteer_' + b.status, note: String(b.id) });
+      return json({ ok: true });
+    }
     if (req.method === 'GET' && p === '/api/admin/log') return json(await db(env).select('mod_actions', 'select=*&order=created_at.desc&limit=100'));
     if (p === '/api/admin/moderators') {
       if (me.role === 'moderator') return json({ error: 'forbidden' }, 403);
@@ -61,6 +74,25 @@ async function route(req, env) {
 }
 
 // ---------- handlers ----------
+
+// Volunteer applications (private; only admins/owner can read them)
+const ROLES = ['moderator', 'social', 'organizer', 'content', 'design', 'developer', 'translator', 'research', 'outreach'];
+async function volunteer(req, env, ipHash) {
+  const b = await readJson(req);
+  const name = clean(b.name).slice(0, 60);
+  const email = String(b.email || '').trim().toLowerCase().slice(0, 200);
+  const state = STATES.has(b.state) ? b.state : null;
+  const roles = (Array.isArray(b.roles) ? b.roles : []).filter(r => ROLES.includes(r)).slice(0, 5);
+  const hours = ['1-2', '3-5', '6-10', '10+'].includes(b.hours) ? b.hours : null;
+  const about = clean(b.about).slice(0, 600);
+  const links = clean(b.links).slice(0, 300);
+  if (!name || !state || !roles.length || b.consent !== true) return json({ error: 'missing_fields', message: 'Add your name, state and at least one role.' }, 400);
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ error: 'bad_email', message: 'Check your email address.' }, 400);
+  if (!(await turnstileOk(env, b.turnstile, req))) return json({ error: 'captcha' }, 403);
+  if (!(await underLimit(env, 'volunteer', ipHash, 3))) return json({ error: 'rate_limited', message: 'Too many applications from this network.' }, 429);
+  await db(env).upsert('volunteers', { name, email, state, roles, hours, about, links, status: 'new', ip_hash: ipHash }, 'email');
+  return json({ ok: true });
+}
 
 // Step 1 of the ladder: one click — "Do you support Jon Ossoff running in 2028?"
 // One answer per network (re-clicking just changes it), no personal data.

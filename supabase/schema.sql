@@ -75,6 +75,21 @@ create table if not exists mod_actions (
   note           text
 );
 
+-- Volunteer applications (private: contact details never shown publicly)
+create table if not exists volunteers (
+  id         uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  name       text not null,
+  email      text not null unique,
+  state      text not null,
+  roles      text[] not null default '{}',
+  hours      text,
+  about      text,
+  links      text,
+  status     text not null default 'new' check (status in ('new','contacted','active','declined')),
+  ip_hash    text
+);
+
 -- Rate-limit events (old rows can be deleted any time)
 create table if not exists rate_events (
   id         bigint generated always as identity primary key,
@@ -94,3 +109,4 @@ alter table signups     enable row level security;
 alter table moderators  enable row level security;
 alter table mod_actions enable row level security;
 alter table rate_events enable row level security;
+alter table volunteers  enable row level security;

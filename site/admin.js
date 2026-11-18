@@ -31,6 +31,7 @@
     $('#login').hidden = true; $('#panel').hidden = false;
     $('#who').textContent = `Signed in as ${me.name} (${me.role}).`;
     $('#teamTab').hidden = me.role === 'moderator';
+    $('#volTab').hidden = me.role === 'moderator';
     show('pending');
   }
   document.querySelector('.tabs').addEventListener('click', (e) => {
@@ -44,6 +45,7 @@
     try {
       if (t === 'team') return team();
       if (t === 'log') return log();
+      if (t === 'volunteers') return volunteers();
       const rows = await call('/api/admin/queue?status=' + t);
       if (!rows.length) { $('#view').innerHTML = '<p class="empty">Nothing here.</p>'; return; }
       $('#view').innerHTML = rows.map(r => `
@@ -97,6 +99,18 @@
     $('#view').querySelectorAll('[data-off]').forEach(b => b.addEventListener('click', async () => {
       await call('/api/admin/moderators', { action: 'deactivate', id: b.dataset.off }); team();
     }));
+  }
+
+  async function volunteers() {
+    const rows = await call('/api/admin/volunteers');
+    if (!rows.length) { $('#view').innerHTML = '<p class="empty">No applications yet.</p>'; return; }
+    const opts = ['new', 'contacted', 'active', 'declined'];
+    $('#view').innerHTML = `<table><thead><tr><th>Name</th><th>State</th><th>Roles</th><th>Hours</th><th>Contact</th><th>About</th><th>Status</th></tr></thead><tbody>
+      ${rows.map(v => `<tr><td>${esc(v.name)}</td><td>${esc(v.state)}</td><td>${esc((v.roles || []).join(', '))}</td><td>${esc(v.hours || '')}</td>
+        <td>${esc(v.email)}${v.links ? '<br><small>' + esc(v.links) + '</small>' : ''}</td><td><small>${esc(v.about || '')}</small></td>
+        <td><select class="select" data-vid="${esc(v.id)}" aria-label="Status">${opts.map(o => `<option${o === v.status ? ' selected' : ''}>${o}</option>`).join('')}</select></td></tr>`).join('')}
+      </tbody></table>`;
+    $('#view').querySelectorAll('select[data-vid]').forEach(s => s.addEventListener('change', () => call('/api/admin/volunteer-status', { id: s.dataset.vid, status: s.value })));
   }
 
   async function log() {
