@@ -5,7 +5,7 @@ window.SITE_CONFIG = {
   API_BASE: "",
 
   // Public address of this site (used in share links and on share cards).
-  SITE_URL: "https://murad2026.github.io/ossoff/",
+  SITE_URL: "https://draftossoff.org/",
 
   // Who runs the site — shown in the footer disclaimer.
   ORG_NAME: "Draft Ossoff 2028 volunteers",
