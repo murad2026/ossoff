@@ -2,9 +2,12 @@ name = "draft-ossoff-api"
 main = "src/index.js"
 compatibility_date = "2026-11-01"
 
+# The API lives at https://api.draftossoff.org (Cloudflare creates the DNS record and certificate).
+routes = [{ pattern = "api.draftossoff.org", custom_domain = true }]
+
 [vars]
 # Comma-separated list of sites allowed to call the API (your GitHub Pages URL and custom domain).
-ALLOWED_ORIGINS = "https://murad2026.github.io"
+ALLOWED_ORIGINS = "https://draftossoff.org,https://www.draftossoff.org,https://murad2026.github.io"
 # Fast, low-cost model for moderation. Change if you want a stronger one.
 CLAUDE_MODEL = "claude-haiku-5-5"
 
