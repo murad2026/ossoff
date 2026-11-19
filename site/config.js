@@ -2,7 +2,7 @@
 window.SITE_CONFIG = {
   // URL of the deployed Cloudflare Worker, e.g. "https://draft-ossoff-api.yourname.workers.dev".
   // Leave empty to run in DEMO MODE (everything works locally in the browser, nothing is saved to a server).
-  API_BASE: "",
+  API_BASE: "https://api.draftossoff.org",
 
   // Public address of this site (used in share links and on share cards).
   SITE_URL: "https://draftossoff.org/",
