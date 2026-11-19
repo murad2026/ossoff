@@ -1,28 +1,38 @@
-// End-to-end test of the worker with fake Supabase + Claude (no network).
+// End-to-end test of the worker with in-memory SQLite (D1 stand-in) + fake Claude (no network).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../src/index.js';
 
-function fakeBackend(aiReply) {
-  const tables = { stories: [], signups: [], pledges: [], rate_events: [], moderators: [], mod_actions: [], volunteers: [] };
-  globalThis.fetch = async (url, init = {}) => {
-    url = String(url);
-    if (url.includes('anthropic.com')) return new Response(JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(aiReply) }] }), { status: 200 });
-    const u = new URL(url); const table = u.pathname.split('/').pop(); const m = init.method || 'GET';
-    const rows = tables[table] || [];
-    const filt = [...u.searchParams].filter(([k]) => !['select','order','limit','on_conflict'].includes(k));
-    const match = (r) => filt.every(([k, v]) => { const [op, val] = [v.split('.')[0], v.split('.').slice(1).join('.')];
-      if (op === 'eq') return String(r[k]) === val; if (op === 'neq') return String(r[k]) !== val; if (op === 'gte') return true; return true; });
-    if (m === 'POST') { const b = JSON.parse(init.body); if (table === 'pledges') { const i = rows.findIndex(r => r.ip_hash === b.ip_hash); if (i >= 0) rows[i] = b; else rows.push(b); } else if (table === 'volunteers') { const i = rows.findIndex(r => r.email === b.email); const row = { id: crypto.randomUUID(), ...b }; if (i >= 0) rows[i] = row; else rows.push(row); } else rows.push({ id: crypto.randomUUID(), created_at: new Date().toISOString(), ...b }); tables[table] = rows; return new Response(null, { status: 201 }); }
-    if (m === 'HEAD') { const n = rows.filter(match).length; return new Response(null, { status: 200, headers: { 'content-range': `0-0/${n}` } }); }
-    if (m === 'PATCH') { const b = JSON.parse(init.body); rows.filter(match).forEach(r => Object.assign(r, b)); return new Response(null, { status: 204 }); }
-    if (table === 'state_counts') { const by = {}; tables.stories.filter(s => s.status === 'approved').forEach(s => by[s.state] = (by[s.state] || 0) + 1); return Response.json(Object.entries(by).map(([state, n]) => ({ state, n }))); }
-    const sel = u.searchParams.get('select'); const out = rows.filter(match);
-    return Response.json(!sel || sel === '*' ? out : out.map(r => Object.fromEntries(sel.split(',').map(k => [k, r[k]]))));
-  };
-  return tables;
+import { DatabaseSync } from 'node:sqlite';
+import { readFileSync } from 'node:fs';
+
+// Real SQLite in memory behind a D1-shaped binding, plus a fake Claude.
+function fakeD1() {
+  const sql = new DatabaseSync(':memory:');
+  sql.exec(readFileSync(new URL('../schema.sql', import.meta.url), 'utf8'));
+  const prep = (q) => ({
+    _args: [],
+    bind(...a) { this._args = a; return this; },
+    async all() { return { results: sql.prepare(q).all(...this._args) }; },
+    async first() { return sql.prepare(q).get(...this._args) ?? null; },
+    async run() { sql.prepare(q).run(...this._args); return { success: true }; }
+  });
+  const rows = (t) => sql.prepare(`SELECT * FROM ${t}`).all().map(r => {
+    for (const c of ['tags', 'signals', 'roles']) if (typeof r[c] === 'string') r[c] = JSON.parse(r[c]);
+    return r;
+  });
+  return { binding: { prepare: prep }, rows };
 }
-const env = { SUPABASE_URL: 'https://x.supabase.co', SUPABASE_SERVICE_KEY: 'k', ANTHROPIC_API_KEY: 'a', HASH_SALT: 's', ADMIN_TOKEN: 'owner-secret' };
+function fakeBackend(aiReply) {
+  globalThis.fetch = async (url) => {
+    if (String(url).includes('anthropic.com')) return new Response(JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(aiReply) }] }), { status: 200 });
+    throw new Error('unexpected fetch ' + url);
+  };
+  const d = fakeD1();
+  env.DB = d.binding;
+  return new Proxy({}, { get: (_, t) => d.rows(t) });
+}
+const env = { ANTHROPIC_API_KEY: 'a', HASH_SALT: 's', ADMIN_TOKEN: 'owner-secret' };
 const req = (path, body, headers = {}) => new Request('https://api.test' + path, { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': '1.2.3.4', ...headers }, body: body ? JSON.stringify(body) : undefined });
 const good = { verdict: 'publish', category: 'ok', reason: '', tags: ['Personal story'], headline: 'A teacher asks Jon to run', polished: 'I teach in Savannah and want him to run.' };
 

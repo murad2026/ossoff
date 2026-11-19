@@ -8,10 +8,15 @@ ALLOWED_ORIGINS = "https://murad2026.github.io"
 # Fast, low-cost model for moderation. Change if you want a stronger one.
 CLAUDE_MODEL = "claude-haiku-5-5"
 
-# Secrets (set with `npx wrangler secret put NAME`, never commit them):
-#   ANTHROPIC_API_KEY     — from console.anthropic.com
-#   SUPABASE_URL          — https://xxxx.supabase.co
-#   SUPABASE_SERVICE_KEY  — Supabase "service_role" key
-#   HASH_SALT             — any long random string
-#   ADMIN_TOKEN           — long random string for the moderator page
-#   TURNSTILE_SECRET      — optional, Cloudflare Turnstile captcha secret
+# Database: Cloudflare D1 (free tier). The "Deploy API" workflow creates it on first run
+# and writes the real id below; you don't need to touch this by hand.
+[[d1_databases]]
+binding = "DB"
+database_name = "draft-ossoff-db"
+database_id = "REPLACED_BY_WORKFLOW"
+
+# Secrets (set by the GitHub workflow from repository secrets — never commit them):
+#   ANTHROPIC_API_KEY  — from platform.claude.com
+#   HASH_SALT          — any long random string
+#   ADMIN_TOKEN        — owner password for the moderator page
+#   TURNSTILE_SECRET   — optional, Cloudflare Turnstile captcha secret

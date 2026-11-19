@@ -27,45 +27,33 @@ site/        статический сайт (GitHub Pages)
   accountability.html              «Corruption & Project 2025»: факты, итоги, план
   admin.html, admin.js             панель модераторов и админов
   config.js                        ← все настройки сайта здесь
-worker/      API на Cloudflare Workers (ИИ-модерация + база)
-supabase/    schema.sql — таблицы базы
+worker/      API на Cloudflare Workers + база D1 (schema.sql)
 .github/     автодеплой сайта на GitHub Pages
 ```
 
 Пока `API_BASE` в `site/config.js` пустой, сайт работает в **демо-режиме**: всё кликается, но данные хранятся только в браузере.
 
-## Запуск (≈30 минут)
+## Запуск (≈20 минут, без терминала)
 
-### 1. Сайт на GitHub Pages
-1. Репозиторий → **Settings → Pages → Source: GitHub Actions**.
-2. Сделайте любой коммит в `main` (или Actions → *Deploy site* → *Run workflow*).
-3. Сайт появится по адресу `https://murad2026.github.io/ossoff/`. Пока это демо-режим.
+Нужны только два аккаунта: **Cloudflare** (сервер и база данных D1, бесплатно) и **Claude API** (ИИ-модерация). Всё остальное делает GitHub Actions.
 
-### 2. База данных (Supabase, бесплатно)
-1. Зарегистрируйтесь на supabase.com → **New project**.
-2. **SQL Editor → New query** → вставьте содержимое `supabase/schema.sql` → **Run**.
-3. **Project Settings → API**: скопируйте **Project URL** и ключ **service_role** (секретный, только для воркера).
+### 1. Сайт
+Settings → Pages → Source: **GitHub Actions**. Сайт: `https://murad2026.github.io/ossoff/`.
 
-### 3. Ключ Claude API
-console.anthropic.com → **API Keys** → создайте ключ. По умолчанию используется `claude-haiku-5-5`: это быстрая и недорогая модель, проверка одного поста обходится в доли цента.
+### 2. Ключ Claude API
+platform.claude.com → API Keys → Create key, scope **Default workspace**. Поставьте месячный лимит расходов.
 
-### 4. API на Cloudflare Workers (бесплатно на старте)
-```bash
-cd worker
-npm install
-npx wrangler login
-npx wrangler secret put ANTHROPIC_API_KEY
-npx wrangler secret put SUPABASE_URL
-npx wrangler secret put SUPABASE_SERVICE_KEY
-npx wrangler secret put HASH_SALT        # любая длинная случайная строка
-npx wrangler secret put ADMIN_TOKEN      # ваш пароль владельца для панели модерации
-npx wrangler deploy
-```
-Wrangler выдаст адрес вида `https://draft-ossoff-api.<ваш-аккаунт>.workers.dev`.
-Если подключите свой домен, добавьте его в `ALLOWED_ORIGINS` в `worker/wrangler.toml`.
+### 3. Cloudflare
+1. Зарегистрируйтесь на cloudflare.com и один раз откройте **Workers & Pages**, чтобы получить поддомен `*.workers.dev`.
+2. Скопируйте **Account ID**.
+3. My Profile → API Tokens → Create Token → шаблон **Edit Cloudflare Workers** → добавьте разрешение **Account · D1 · Edit** → создайте токен.
 
-### 5. Соединить сайт и API
-В `site/config.js` пропишите `API_BASE` (адрес воркера) и `SITE_URL`, затем закоммитьте. Демо-режим выключится.
+### 4. Секреты в GitHub
+Settings → Secrets and variables → Actions → New repository secret:
+`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `ANTHROPIC_API_KEY`, `HASH_SALT` (любая длинная случайная строка), `ADMIN_TOKEN` (пароль владельца для панели модерации).
+
+### 5. Деплой
+Actions → **Deploy API (Cloudflare Worker + D1)** → Run workflow. Workflow сам создаст базу D1, применит `worker/schema.sql`, задеплоит воркер и покажет его адрес. Этот адрес впишите в `API_BASE` в `site/config.js`, и демо-режим выключится.
 
 ### 6. Команда модераторов
 1. Откройте `https://…/ossoff/admin.html` и войдите со своим `ADMIN_TOKEN`. Это роль **owner**.
@@ -75,7 +63,7 @@ Wrangler выдаст адрес вида `https://draft-ossoff-api.<ваш-ак
 3. Удалённый участник сразу теряет доступ. Все действия видны во вкладке **Log**.
 
 ### 7. (Желательно) Капча
-Cloudflare → Turnstile → создайте виджет. Site key вставьте в `TURNSTILE_SITEKEY` в `config.js`, секрет задайте командой `npx wrangler secret put TURNSTILE_SECRET`.
+Cloudflare → Turnstile → создайте виджет. Site key вставьте в `TURNSTILE_SITEKEY` в `config.js`, секрет добавьте в GitHub Secrets как `TURNSTILE_SECRET` и в список secrets в `.github/workflows/deploy-api.yml`.
 
 ## Тесты
 ```bash
