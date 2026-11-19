@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Source+Serif+4:ital,wght@0,600;1,500&family=Inter:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="styles.css?v=4">
+<link rel="stylesheet" href="styles.css?v=5">
 <style>
 .trio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
 .sen{background:var(--bg);border:1.5px solid var(--line);border-top:8px solid var(--red);border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:10px}
@@ -32,12 +32,12 @@
 .sign-box p{font-family:var(--sans);font-size:15px;color:var(--muted);margin:0;flex:1 1 260px}
 @media(max-width:900px){.trio{grid-template-columns:minmax(0,1fr)}.timeline li{grid-template-columns:minmax(0,1fr);gap:4px}}
 </style>
-<script src="config.js?v=4"></script>
+<script src="config.js?v=5"></script>
 </head>
 <body>
 
 <div class="disclaimer">
-  <strong>Unofficial fan site.</strong> Not affiliated with, authorized or endorsed by Sen. Ossoff, Sen.-elect Talarico, Sen.-elect El-Sayed, President Obama or any campaign.
+  <strong>Unofficial fan site.</strong> Not affiliated with, authorized or endorsed by Sen. Ossoff, Sen.-elect Talarico, Sen.-elect El-Sayed, President Obama or any campaign. <a href="money.html" style="color:#FF9DA8;font-weight:700">We never ask for money.</a>
 </div>
 
 <header class="top">
@@ -48,6 +48,7 @@
     <span class="logo-year">2028</span>
   </a>
   <nav aria-label="Sections">
+    <a href="money.html">$0 pledge</a>
     <a href="volunteer.html">Volunteer</a>
     <a href="new-generation.html" aria-current="page" class="nav-hot">New Generation</a>
     <a href="why-2028.html">Why 2028</a>
@@ -151,7 +152,7 @@
 <script>
 {
   const C = window.SITE_CONFIG || {};
-  document.getElementById('legal').textContent = `Unofficial supporter site run by ${C.ORG_NAME || 'volunteers'}. Not authorized by any candidate or candidate's committee. Contact: ${C.CONTACT_EMAIL || ''}`;
+  document.getElementById('legal').textContent = `Unofficial supporter site run by ${C.ORG_NAME || 'volunteers'}. Not authorized by any candidate or candidate's committee. We do not solicit or accept contributions. Contact: ${C.CONTACT_EMAIL || ''}`;
   const API = (C.API_BASE || '').replace(/\/+$/, '');
   if (API) fetch(API + '/api/stats').then(r => r.json()).then(s => { if (s.yes) document.getElementById('signCount').textContent = s.yes.toLocaleString(); }).catch(() => {});
 }
