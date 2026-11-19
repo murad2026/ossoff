@@ -9,7 +9,7 @@
 //   POST /api/admin/decide    -> approve / reject a pending story (needs ADMIN_TOKEN)
 
 import { moderate, TAGS } from './moderation.js';
-import { db } from './supabase.js';
+import { db } from './d1.js';
 import { normalize, sha256, refCode, signals } from './util.js';
 
 const STATES = new Set(['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','PR','Abroad']);
@@ -90,7 +90,7 @@ async function volunteer(req, env, ipHash) {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ error: 'bad_email', message: 'Check your email address.' }, 400);
   if (!(await turnstileOk(env, b.turnstile, req))) return json({ error: 'captcha' }, 403);
   if (!(await underLimit(env, 'volunteer', ipHash, 3))) return json({ error: 'rate_limited', message: 'Too many applications from this network.' }, 429);
-  await db(env).upsert('volunteers', { name, email, state, roles, hours, about, links, status: 'new', ip_hash: ipHash }, 'email');
+  await db(env).upsert('volunteers', { name, email, state, roles, hours, about, links, status: 'new', ip_hash: ipHash }, 'email', true);
   return json({ ok: true });
 }
 
@@ -101,15 +101,7 @@ async function pledge(req, env, ipHash) {
   const answer = ['yes', 'unsure'].includes(b.answer) ? b.answer : null;
   if (!answer) return json({ error: 'bad_request' }, 400);
   const state = STATES.has(b.state) ? b.state : null;
-  const r = await fetch(env.SUPABASE_URL.replace(/\/+$/, '') + '/rest/v1/pledges?on_conflict=ip_hash', {
-    method: 'POST',
-    headers: {
-      apikey: env.SUPABASE_SERVICE_KEY, Authorization: 'Bearer ' + env.SUPABASE_SERVICE_KEY,
-      'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal'
-    },
-    body: JSON.stringify({ ip_hash: ipHash, answer, state, updated_at: new Date().toISOString() })
-  });
-  if (!r.ok) throw new Error('pledge ' + r.status + ' ' + await r.text());
+  await db(env).upsert('pledges', { ip_hash: ipHash, answer, state, updated_at: new Date().toISOString() }, 'ip_hash', true);
   const yes = await db(env).count('pledges', 'answer=eq.yes');
   return json({ ok: true, answer, yes });
 }
@@ -279,7 +271,7 @@ async function turnstileOk(env, token, req) {
   return d.success === true;
 }
 
-// Simple fixed-window rate limit stored in Supabase (works across all worker instances)
+// Simple fixed-window rate limit stored in D1 (works across all worker instances)
 async function underLimit(env, kind, ipHash, max) {
   const since = new Date(Date.now() - 3600_000).toISOString();
   const n = await db(env).count('rate_events', `ip_hash=eq.${ipHash}&kind=eq.${kind}&created_at=gte.${since}`);
