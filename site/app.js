@@ -236,7 +236,7 @@
     cx.fillStyle = '#fff'; cx.font = '700 64px Oswald, Impact, sans-serif'; cx.textBaseline = 'alphabetic';
     cx.fillText('OSSOFF', 72, 140); const w1 = cx.measureText('OSSOFF').width;
     star(72 + w1 + 34, 118, 22, '#B22234');
-    cx.fillStyle = '#FF9DA8'; cx.fillText('2028', 72 + w1 + 68, 140);
+    cx.fillStyle = '#FF4757'; cx.fillText('2028', 72 + w1 + 68, 140);
     cx.fillStyle = '#C9D3E3'; cx.font = '600 26px Inter, sans-serif'; cx.fillText('RUN, JON, RUN.', 72, 186);
     // headline
     const headline = ((reviewed && reviewed.headline) || 'Why I want Jon to run').toUpperCase();
@@ -251,7 +251,7 @@
     // byline
     const name = $('#firstName').value.trim() || store.get('name', '') || 'Your name';
     const st = $('#state').value; const stName = st === 'Abroad' ? 'abroad' : (STATE_NAME[st] || 'your state');
-    cx.fillStyle = '#FF9DA8'; cx.font = '700 34px Inter, sans-serif'; cx.fillText('— ' + name + ', ' + stName, 72, Math.min(y + 30, H - 170));
+    cx.fillStyle = '#FF4757'; cx.font = '700 34px Inter, sans-serif'; cx.fillText('— ' + name + ', ' + stName, 72, Math.min(y + 30, H - 170));
     // footer
     cx.fillStyle = '#B22234'; cx.fillRect(72, H - 132, 330, 54);
     cx.fillStyle = '#fff'; cx.font = '700 28px Oswald, Impact, sans-serif'; cx.fillText('#DRAFTOSSOFF2028', 88, H - 94);
