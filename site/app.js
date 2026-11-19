@@ -51,7 +51,7 @@
     img.src = CFG.HERO_PHOTO;
     $('#photoCredit').textContent = CFG.HERO_PHOTO_CREDIT || '';
   }
-  $('#legal').textContent = `Unofficial supporter site run by ${CFG.ORG_NAME || 'volunteers'}. Not authorized by any candidate or candidate's committee. No photos or logos of Sen. Ossoff are used. Contact: ${CFG.CONTACT_EMAIL || ''}`;
+  $('#legal').textContent = `Unofficial supporter site run by ${CFG.ORG_NAME || 'volunteers'}. Not authorized by any candidate or candidate's committee. We do not solicit or accept contributions. No photos or logos of Sen. Ossoff are used. Contact: ${CFG.CONTACT_EMAIL || ''}`;
   const opts = (first) => `<option value="">${first}</option>` + STATES.map(([c, n]) => `<option value="${c}">${n}</option>`).join('') + '<option value="Abroad">Living abroad</option>';
   $('#pledgeState').innerHTML = opts('Choose your state');
   $('#state').innerHTML = opts('Choose…');

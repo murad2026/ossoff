@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Our money pledge — Draft Ossoff 2028</title>
+<meta name="description" content="Draft Ossoff 2028 does not ask for, accept or spend donations. Here is exactly how the site is funded and what to do if anyone asks you for money in our name.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Source+Serif+4:ital,wght@0,600;1,500&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="styles.css?v=5">
+<style>
+.zero{display:flex;flex-wrap:wrap;gap:clamp(20px,4vw,56px);align-items:center}
+.zero .big{font-family:var(--display);font-weight:700;font-size:clamp(96px,16vw,200px);line-height:.85;color:#fff}
+.zero .big small{display:block;font-size:.2em;letter-spacing:1px;color:#FF9DA8;margin-top:10px}
+.pledges{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.pledges li{background:var(--bg);border:1.5px solid var(--line);border-left:6px solid var(--red);border-radius:10px;padding:18px 20px}
+.pledges b{display:block;font-size:19px;margin-bottom:4px}
+.pledges span{color:var(--muted);font-size:16px}
+.costs{width:100%;max-width:820px;border-collapse:collapse;font-size:16px}
+.costs th,.costs td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--line)}
+.costs td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.costs tfoot td{font-weight:700;border-bottom:0}
+@media(max-width:600px){.costs td.n{white-space:normal}.costs th,.costs td{padding:10px 6px;font-size:14px}}
+.scam{background:light-dark(#FFF5F6,#1E0F16);border:2px solid var(--red);border-radius:14px;padding:clamp(20px,3vw,32px);max-width:820px}
+.scam h2{margin:0 0 8px;font-family:var(--display);text-transform:uppercase;font-size:clamp(26px,3vw,36px);color:var(--red)}
+.scam p{margin:0 0 10px}
+</style>
+<script src="config.js?v=5"></script>
+</head>
+<body>
+
+<div class="disclaimer">
+  <strong>Unofficial fan site.</strong> Not affiliated with, authorized or endorsed by Sen. Jon Ossoff or any campaign. <strong>We never ask for money.</strong>
+</div>
+
+<header class="top">
+  <a class="logo" href="index.html" aria-label="Draft Ossoff 2028 home">
+    <span class="logo-draft">Draft</span>
+    <span class="logo-name">Ossoff</span>
+    <svg class="logo-star" viewBox="0 0 24 24" aria-hidden="true"><use href="#star"/></svg>
+    <span class="logo-year">2028</span>
+  </a>
+  <nav aria-label="Sections">
+    <a href="money.html" aria-current="page" class="nav-hot">$0 pledge</a>
+    <a href="volunteer.html">Volunteer</a>
+    <a href="new-generation.html">New Generation</a>
+    <a href="why-2028.html">Why 2028</a>
+    <a href="index.html#voice">Add your voice</a>
+  </nav>
+</header>
+
+<section class="acc-hero">
+  <div class="stars-field" aria-hidden="true"></div>
+  <div class="inner zero">
+    <div class="big">$0<small>DONATIONS ASKED FOR · $0 ACCEPTED</small></div>
+    <div style="flex:1 1 380px">
+      <p class="kicker">Our money pledge</p>
+      <h1 style="font-size:clamp(40px,5.5vw,72px)">Clean money starts with no money.</h1>
+      <p>A movement against corruption has to be beyond question on money. So we keep it simple: we don't raise it, we don't take it, and nobody here gets paid.</p>
+    </div>
+  </div>
+  <div class="bunting" aria-hidden="true"></div>
+</section>
+
+<section class="band" aria-labelledby="pT">
+  <h2 id="pT" class="section-title">Five promises</h2>
+  <ul class="pledges">
+    <li><b>We never ask for donations</b><span>No “chip in $5”, no fundraising emails, no crypto wallets, no payment links. Anywhere.</span></li>
+    <li><b>We don't accept money</b><span>Not from individuals, companies, PACs, campaigns or anyone outside the United States. If someone offers, we say no.</span></li>
+    <li><b>Nobody is paid</b><span>Every organizer, moderator and volunteer works unpaid. Volunteers give time, never money.</span></li>
+    <li><b>We buy no ads</b><span>We grow by people sharing in their own words, not by paid promotion.</span></li>
+    <li><b>We'll tell you first</b><span>If that ever changes, we will form a proper organization, register and report as federal election law requires, and publish it here before a single dollar moves.</span></li>
+  </ul>
+</section>
+
+<section class="band why" aria-labelledby="cT">
+  <h2 id="cT" class="section-title">What it costs to run</h2>
+  <p class="lead">Almost everything runs on free tiers. The only out-of-pocket costs, AI moderation usage and the web address, are paid personally by the site's organizer. No outside money is involved.</p>
+  <div class="scroll"><table class="costs">
+    <thead><tr><th>Item</th><th>Provider</th><th class="n">Cost</th></tr></thead>
+    <tbody>
+      <tr><td>Website hosting</td><td>GitHub Pages</td><td class="n">$0</td></tr>
+      <tr><td>API and AI-moderation server</td><td>Cloudflare Workers (free tier)</td><td class="n">$0</td></tr>
+      <tr><td>Database</td><td>Supabase (free tier)</td><td class="n">$0</td></tr>
+      <tr><td>AI moderation of stories</td><td>Claude API, pay per use</td><td class="n">a few dollars a month at current volume</td></tr>
+      <tr><td>Domain name, when we buy one</td><td>Registrar</td><td class="n">about $10–15 a year</td></tr>
+    </tbody>
+    <tfoot><tr><td colspan="2">Donations received</td><td class="n">$0</td></tr></tfoot>
+  </table></div>
+  <p class="lead" style="margin-top:14px;font-size:14px">Last updated <span id="upd">November 2026</span>. We'll update this table whenever anything changes.</p>
+</section>
+
+<section class="band" aria-label="Scam warning">
+  <div class="scam">
+    <h2>If anyone asks you for money in our name, it's a scam.</h2>
+    <p>We will never text, email, call or message you asking for money, gift cards, crypto or payment details. Not for “the campaign”, not for “Jon”, not for “server costs”.</p>
+    <p>If it happens: don't pay, take a screenshot, and report it to the FTC at <a href="https://reportfraud.ftc.gov">reportfraud.ftc.gov</a> and to us at <span id="contact"></span>.</p>
+    <p style="margin:0">To support Sen. Ossoff himself, use only his official channels. We are not one of them.</p>
+  </div>
+</section>
+
+<footer class="foot band">
+  <p class="legal" id="legal"></p>
+</footer>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="star" viewBox="0 0 24 24"><path d="M12 1.8l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9l7.1-.6z"/></symbol>
+</svg>
+<script>
+{
+  const C = window.SITE_CONFIG || {};
+  document.getElementById('contact').textContent = C.CONTACT_EMAIL || 'our contact email';
+  document.getElementById('legal').textContent = `Unofficial supporter site run by ${C.ORG_NAME || 'volunteers'}. Not authorized by any candidate or candidate's committee. We do not solicit or accept contributions. Contact: ${C.CONTACT_EMAIL || ''}`;
+}
+</script>
+</body>
+</html>
