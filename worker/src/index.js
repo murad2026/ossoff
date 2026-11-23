@@ -76,7 +76,7 @@ async function route(req, env) {
 // ---------- handlers ----------
 
 // Volunteer applications (private; only admins/owner can read them)
-const ROLES = ['moderator', 'social', 'organizer', 'content', 'design', 'developer', 'translator', 'research', 'outreach'];
+const ROLES = ['moderator', 'social', 'organizer', 'content', 'design', 'developer', 'translator', 'research', 'outreach', 'elections'];
 async function volunteer(req, env, ipHash) {
   const b = await readJson(req);
   const name = clean(b.name).slice(0, 60);
