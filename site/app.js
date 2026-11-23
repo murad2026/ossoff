@@ -185,7 +185,9 @@
     const link = refUrl(code);
     const a = $('#refLink'); a.href = link; a.textContent = link;
     drawCard(code);
-    try { const r = await api.ref(code); $('#refStats').textContent = r.recruited ? `You've brought in ${r.recruited} ${r.recruited === 1 ? 'person' : 'people'} so far.` : 'Share it — every friend who joins through it counts toward step 4.'; } catch {}
+    try { const r = await api.ref(code);
+      if (r.text && !store.get('myText', '')) { store.set('myText', r.text); if (r.headline) store.set('myHeadline', r.headline); drawCard(code); }
+      $('#refStats').textContent = r.recruited ? `You've brought in ${r.recruited} ${r.recruited === 1 ? 'person' : 'people'} so far.` : 'Share it — every friend who joins through it counts toward step 4.'; } catch {}
   }
   const savedRef = store.get('refCode', null);
   if (savedRef) showShare(savedRef);

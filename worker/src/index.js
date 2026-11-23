@@ -183,7 +183,12 @@ async function stats(env) {
 
 async function refCount(env, code) {
   if (!/^[A-Z0-9]{6}$/.test(code)) return json({ error: 'bad_code' }, 400);
-  return json({ code, recruited: await db(env).count('signups', `referred_by=eq.${code}`) });
+  const [recruited, mine] = await Promise.all([
+    db(env).count('signups', `referred_by=eq.${code}`),
+    // Only an approved story — it is already public on the wall.
+    db(env).select('stories', `ref_code=eq.${code}&status=eq.approved&select=text,headline&limit=1`)
+  ]);
+  return json({ code, recruited, text: mine[0]?.text || '', headline: mine[0]?.headline || '' });
 }
 
 // ---------- moderation team ----------
