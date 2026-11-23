@@ -286,7 +286,7 @@
           ${p.headline ? `<h3>${esc(p.headline)}</h3>` : ''}
           <blockquote>“${esc(p.text)}”</blockquote>
           <p class="by">— ${esc(p.first_name)}, ${esc(p.state === 'Abroad' ? 'abroad' : (STATE_NAME[p.state] || p.state))}</p>
-          ${(p.tags || []).length ? `<div class="tags">${p.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
+          ${pubTags(p.tags).length ? `<div class="tags">${pubTags(p.tags).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
         </article>`).join('');
     } catch { $('#wallGrid').innerHTML = '<p class="empty">The wall can’t be reached right now.</p>'; }
   }
@@ -301,6 +301,9 @@
   function turnstileToken() { const i = document.querySelector('[name="cf-turnstile-response"]'); return i ? i.value : undefined; }
 
   // ---------- helpers ----------
+  // Internal moderator notes never show on the public wall.
+  const PRIVATE_TAGS = new Set(['Needs a source', 'Emotion without argument']);
+  function pubTags(t) { return (Array.isArray(t) ? t : []).filter(x => !PRIVATE_TAGS.has(x)); }
   function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
   function msg(sel, t) { const el = $(sel); el.classList.remove('err'); el.textContent = t; }
   function alertMsg(sel, t) { const el = $(sel); el.classList.add('err'); el.textContent = t; }
