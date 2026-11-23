@@ -88,5 +88,11 @@ CREATE TABLE IF NOT EXISTS rate_events (
 );
 CREATE INDEX IF NOT EXISTS rate_events_lookup ON rate_events (ip_hash, kind, created_at);
 
-CREATE VIEW IF NOT EXISTS state_counts AS
-  SELECT state, COUNT(*) AS n FROM stories WHERE status = 'approved' GROUP BY state;
+-- Supporters by state: "yes" votes that named a state, plus published stories.
+DROP VIEW IF EXISTS state_counts;
+CREATE VIEW state_counts AS
+  SELECT state, COUNT(*) AS n FROM (
+    SELECT state FROM pledges WHERE answer = 'yes' AND state IS NOT NULL
+    UNION ALL
+    SELECT state FROM stories WHERE status = 'approved'
+  ) GROUP BY state;

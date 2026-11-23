@@ -244,3 +244,4 @@ small{font-weight:400;color:var(--muted)}
 
 .foot-links{margin:0 0 10px;font-weight:600}
 .foot-links a{color:var(--ink)}
+.ask-state-ok{margin:10px 0 0;font-weight:600;color:#7CD992;min-height:1.2em}

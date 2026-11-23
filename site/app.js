@@ -97,7 +97,7 @@
   $('#pledgeState').addEventListener('change', async (e) => {
     const s = e.target.value; store.set('state', s); $('#state').value = s;
     const a = store.get('pledge', null);
-    if (a && s) { try { await api.pledge(a, s); } catch {} }
+    if (a && s) { try { await api.pledge(a, s); $('#stateOk').textContent = '✓ Counted for ' + (s === 'Abroad' ? 'Americans abroad' : (STATE_NAME[s] || s)) + '.'; loadStats(); } catch {} }
   });
 
   // ---------- STEP 2: write + AI check ----------
