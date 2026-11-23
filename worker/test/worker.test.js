@@ -29,6 +29,12 @@ test('signals catch spam patterns', () => {
   assert.deepEqual(signals('I am a teacher in Savannah and I want Jon to run because he fights corruption.'), []);
 });
 
+test('parse: accepts an object from tool_use', () => {
+  const r = parse({ verdict: 'publish', category: 'ok', reason: '', tags: ['Personal story'], headline: 'Hi there', polished: 'x' });
+  assert.equal(r.verdict, 'publish');
+  assert.deepEqual(r.tags, ['Personal story']);
+});
+
 test('normalize and ref codes', () => {
   assert.equal(normalize('  Run, JON — run!! '), 'run jon run');
   const c = refCode();

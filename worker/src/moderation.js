@@ -28,37 +28,70 @@ Also produce:
 - headline: a 3-7 word headline drawn from the writer's own words (no quotes from Ossoff, no ALL CAPS)
 - polished: the same message in the writer's voice, tightened for a share card, max 220 characters, first person, no hashtags, no emoji, do NOT add facts, numbers or claims the writer did not make, and do NOT attribute words to Ossoff. If the post is rejected, return an empty string.
 
-Reply with ONLY a JSON object: {"verdict":"","category":"","reason":"","tags":[],"headline":"","polished":""}`;
+Return your answer with the moderation_result tool.`;
+
+// Structured output: Claude must answer by "calling" this tool, so the reply is always
+// a JSON object with exactly these fields (no prose, no code fences to strip).
+const RESULT_TOOL = {
+  name: 'moderation_result',
+  description: 'Return the moderation verdict and edits for the post.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      verdict: { type: 'string', enum: ['publish', 'review', 'reject'] },
+      category: { type: 'string', enum: CATEGORIES },
+      reason: { type: 'string', description: 'One short, kind sentence for the writer.' },
+      tags: { type: 'array', items: { type: 'string', enum: TAGS }, maxItems: 3 },
+      headline: { type: 'string', description: '3-7 words from the writer\'s own words.' },
+      polished: { type: 'string', description: 'Tightened version, max 220 characters; empty if rejected.' }
+    },
+    required: ['verdict', 'category', 'reason', 'tags', 'headline', 'polished']
+  }
+};
 
 export async function moderate(env, text) {
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: env.CLAUDE_MODEL || 'claude-haiku-5-5',
-      max_tokens: 500,
-      system: SYSTEM,
-      messages: [{ role: 'user', content: `<post>\n${text.replace(/<\/?post>/gi, '')}\n</post>` }]
-    })
-  });
+  let r;
+  try {
+    r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: env.CLAUDE_MODEL || 'claude-haiku-5-5',
+        max_tokens: 1024,
+        system: SYSTEM,
+        tools: [RESULT_TOOL],
+        tool_choice: { type: 'tool', name: RESULT_TOOL.name },
+        messages: [{ role: 'user', content: `<post>\n${text.replace(/<\/?post>/gi, '')}\n</post>` }]
+      })
+    });
+  } catch (e) {
+    console.error('anthropic fetch failed', e);
+    return fallback('The checker is busy, so a volunteer will review your story.');
+  }
   if (!r.ok) {
     console.error('anthropic', r.status, await r.text());
     // Fail safe: if the AI is unavailable, nothing auto-publishes — it waits for a human.
     return fallback('The checker is busy, so a volunteer will review your story.');
   }
   const data = await r.json();
+  const call = (data.content || []).find(c => c.type === 'tool_use' && c.name === RESULT_TOOL.name);
+  if (call && call.input) return parse(call.input);
   const raw = (data.content || []).map(c => c.text || '').join('');
+  console.error('anthropic: no tool_use block', data.stop_reason, raw.slice(0, 500));
   return parse(raw);
 }
 
 export function parse(raw) {
   try {
-    const m = raw.match(/\{[\s\S]*\}/);
-    const o = JSON.parse(m ? m[0] : raw);
+    let o = raw;
+    if (typeof raw === 'string') {
+      const m = raw.match(/\{[\s\S]*\}/);
+      o = JSON.parse(m ? m[0] : raw);
+    }
     const verdict = ['publish', 'review', 'reject'].includes(o.verdict) ? o.verdict : 'review';
     return {
       verdict,

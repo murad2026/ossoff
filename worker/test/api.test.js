@@ -25,7 +25,7 @@ function fakeD1() {
 }
 function fakeBackend(aiReply) {
   globalThis.fetch = async (url) => {
-    if (String(url).includes('anthropic.com')) return new Response(JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(aiReply) }] }), { status: 200 });
+    if (String(url).includes('anthropic.com')) return new Response(JSON.stringify({ content: [{ type: 'tool_use', name: 'moderation_result', input: aiReply }] }), { status: 200 });
     throw new Error('unexpected fetch ' + url);
   };
   const d = fakeD1();
