@@ -139,7 +139,7 @@
   $('#state').addEventListener('change', drawCard);
 
   function finalText() {
-    if (!reviewed) return text.value.trim();
+    if (!reviewed) return text.value.trim() || store.get('myText', '');
     const v = document.querySelector('input[name=version]:checked').value;
     return v === 'polished' && reviewed.polished ? reviewed.polished : reviewed.original;
   }
@@ -163,8 +163,8 @@
     const btn = $('#submitBtn'); btn.disabled = true; msg('#submitMsg', 'Posting…');
     try {
       const r = await api.submit(body);
-      store.set('state', body.state); store.set('refCode', r.refCode); store.set('name', body.firstName);
-      if (r.headline) reviewed = { ...(reviewed || {}), headline: r.headline };
+      store.set('state', body.state); store.set('refCode', r.refCode); store.set('name', body.firstName); store.set('myText', body.text);
+      if (r.headline) { reviewed = { ...(reviewed || {}), headline: r.headline }; store.set('myHeadline', r.headline); }
       markStep(2); markStep(3);
       msg('#submitMsg', r.status === 'approved' ? 'Posted! It’s on the wall below.' : 'Thanks! A volunteer will review it shortly — usually within a day.');
       showShare(r.refCode);
@@ -239,7 +239,7 @@
     cx.fillStyle = '#FF4757'; cx.fillText('2028', 72 + w1 + 68, 140);
     cx.fillStyle = '#C9D3E3'; cx.font = '600 26px Inter, sans-serif'; cx.fillText('RUN, JON, RUN.', 72, 186);
     // headline
-    const headline = ((reviewed && reviewed.headline) || 'Why I want Jon to run').toUpperCase();
+    const headline = ((reviewed && reviewed.headline) || store.get('myHeadline', '') || 'Why I want Jon to run').toUpperCase();
     cx.fillStyle = '#fff'; cx.font = '700 54px Oswald, Impact, sans-serif';
     let y = 290; for (const l of wrap(headline, W - 144).slice(0, 2)) { cx.fillText(l, 72, y); y += 64; }
     // quote
