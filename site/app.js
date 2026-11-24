@@ -321,16 +321,63 @@
       $('#heroStateList').innerHTML = ranked.map(([c, n]) => by[c] === max
         ? `<span class="lead-st" title="Leading: ${esc(n)}">★ ${c} <b>${by[c]}</b></span>`
         : c).join(' · ');
-      $('#stateGrid').innerHTML = STATES.map(([c, n]) => `<div class="st${by[c] ? ' on' : ''}${by[c] && by[c] === max ? ' lead-tile' : ''}" title="${n}: ${by[c] || 0}">${c}<small>${by[c] || 0}</small></div>`).join('');
+      paintMap(by, max);
       const bits = [];
       if (s.latestAt && Date.now() - Date.parse(s.latestAt) < 30 * 864e5) bits.push('Latest: ' + ago(s.latestAt));
       if (s.last24h) bits.push(s.last24h.toLocaleString() + ' in the last 24 hours');
       $('#liveLine').hidden = !bits.length;
       $('#liveText').textContent = bits.join(' · ');
-    } catch { if (!$('#stateGrid').innerHTML) $('#stateGrid').innerHTML = '<p>Tally unavailable right now.</p>'; }
+    } catch { if (!$('#usMap').innerHTML) $('#usMap').innerHTML = '<p>Tally unavailable right now.</p>'; }
   }
   setInterval(() => { if (!document.hidden) loadStats(); }, 20000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) loadStats(); });
+
+  // ---------- US map ----------
+  // Real state shapes (us-atlas, ISC), colored by number of backers; the leader pulses with a star.
+  const CENTER = {"AL":[672,432],"AK":[103,523],"AZ":[208,382],"CO":[332,290],"FL":[790,520],"GA":[736,428],"IN":[665,269],"KS":[456,309],"ME":[919,94],"MA":[897,172],"MN":[525,132],"NJ":[861,230],"NC":[801,351],"ND":[429,104],"OK":[471,376],"PA":[806,226],"SD":[430,172],"TX":[434,469],"WY":[308,195],"CT":[886,190],"MO":[560,312],"WV":[766,285],"IL":[615,270],"NM":[311,393],"AR":[564,391],"CA":[82,288],"DE":[854,261],"DC":[827,268],"HI":[301,574],"IA":[540,227],"KY":[688,321],"MD":[832,263],"MI":[690,190],"MS":[618,437],"MT":[287,100],"NH":[893,141],"NY":[834,172],"OH":[724,253],"OR":[103,134],"TN":[673,361],"UT":[227,269],"VA":[803,304],"WA":[124,59],"WI":[595,167],"NE":[434,239],"SC":[780,393],"ID":[199,147],"NV":[142,252],"VT":[873,136],"LA":[565,470],"RI":[904,184]};
+  let mapReady = null;
+  function loadMap() {
+    if (!mapReady) mapReady = fetch('img/us-map.svg').then(r => r.text()).then(svg => {
+      $('#usMap').innerHTML = svg;
+      const tip = $('#usmTip');
+      $('#usMap').addEventListener('mousemove', (e) => {
+        const p = e.target.closest('.usm-st');
+        if (!p) { tip.hidden = true; return; }
+        const n = Number(p.dataset.n || 0), box = $('#usMap').getBoundingClientRect();
+        tip.textContent = `${STATE_NAME[p.dataset.st] || p.dataset.st}: ${n} ${n === 1 ? 'backer' : 'backers'}`;
+        tip.style.left = (e.clientX - box.left) + 'px'; tip.style.top = (e.clientY - box.top) + 'px'; tip.hidden = false;
+      });
+      $('#usMap').addEventListener('mouseleave', () => { tip.hidden = true; });
+      $('#usMap').addEventListener('click', (e) => {
+        const p = e.target.closest('.usm-st'); if (!p) return;
+        const f = $('#wallFilter'); if ([...f.options].some(o => o.value === p.dataset.st)) { f.value = p.dataset.st; loadWall(); $('#wall').scrollIntoView({ behavior: 'smooth' }); }
+      });
+    });
+    return mapReady;
+  }
+  async function paintMap(by, max) {
+    await loadMap();
+    const svg = $('#usMap svg'); if (!svg) return;
+    svg.querySelectorAll('.usm-st').forEach(p => {
+      const n = by[p.dataset.st] || 0;
+      p.dataset.n = n;
+      p.setAttribute('class', 'usm-st' + (n ? ' on' : '') + (n && n === max ? ' lead' : ''));
+      // deeper red with more backers (log scale so one big state doesn't wash out the rest)
+      p.style.fill = n ? `hsl(354, 68%, ${Math.max(30, 62 - 16 * Math.log2(1 + n) / Math.log2(1 + max))}%)` : '';
+    });
+    svg.querySelectorAll('.usm-mark').forEach(m => m.remove());
+    const NS = 'http://www.w3.org/2000/svg';
+    Object.keys(by).filter(c => by[c] === max && CENTER[c]).forEach(c => {
+      const [x, y] = CENTER[c], g = document.createElementNS(NS, 'g');
+      g.setAttribute('class', 'usm-mark'); g.setAttribute('transform', `translate(${x},${y})`);
+      g.innerHTML = '<circle class="usm-ring" r="14"/><circle class="usm-ring d2" r="14"/><path class="usm-star" d="M0-11l3.2 7 7.6.7-5.8 5 1.8 7.4L0 5.2l-6.6 3.9 1.8-7.4-5.8-5 7.6-.7z"/>';
+      svg.appendChild(g);
+    });
+    const extra = [];
+    if (by.PR) extra.push(`Puerto Rico: ${by.PR}`);
+    if (by.Abroad) extra.push(`Americans abroad: ${by.Abroad}`);
+    $('#usmExtra').textContent = extra.join(' · ');
+  }
 
   // ---------- wall ----------
   async function loadWall() {
