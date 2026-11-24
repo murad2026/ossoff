@@ -168,17 +168,22 @@ async function stories(env, url) {
   const state = url.searchParams.get('state');
   let q = `status=eq.approved&select=id,created_at,first_name,state,text,headline,tags&order=created_at.desc&limit=${limit}`;
   if (state && STATES.has(state)) q += `&state=eq.${state}`;
-  return json(await db(env).select('stories', q), 200, { 'Cache-Control': 'public, max-age=30' });
+  // Public wall shows first names only ("Murad Esenov" -> "Murad").
+  const rows = (await db(env).select('stories', q)).map(r => ({ ...r, first_name: firstOnly(r.first_name) }));
+  return json(rows, 200, { 'Cache-Control': 'public, max-age=30' });
 }
 
 async function stats(env) {
-  const [yes, stories, signups, states] = await Promise.all([
+  const dayAgo = new Date(Date.now() - 864e5).toISOString();
+  const [yes, stories, signups, states, last24h, latest] = await Promise.all([
     db(env).count('pledges', 'answer=eq.yes'),
     db(env).count('stories', 'status=eq.approved'),
     db(env).count('signups', ''),
-    db(env).select('state_counts', 'select=state,n&order=n.desc')
+    db(env).select('state_counts', 'select=state,n&order=n.desc'),
+    db(env).count('pledges', `answer=eq.yes&created_at=gte.${dayAgo}`),
+    db(env).select('pledges', 'answer=eq.yes&select=created_at&order=created_at.desc&limit=1')
   ]);
-  return json({ yes, stories, signups, states }, 200, { 'Cache-Control': 'public, max-age=60' });
+  return json({ yes, stories, signups, states, last24h, latestAt: latest[0]?.created_at || null }, 200, { 'Cache-Control': 'public, max-age=15' });
 }
 
 async function refCount(env, code) {
@@ -295,3 +300,7 @@ async function uniqueRef(env) {
 }
 
 export { TAGS };
+
+function firstOnly(name) {
+  return String(name || '').trim().split(/\s+/)[0] || 'A supporter';
+}

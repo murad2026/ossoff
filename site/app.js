@@ -79,7 +79,7 @@
     $('#askThanks').textContent = answer === 'yes'
       ? 'Your name is in the count. Thank you — you just took step one.'
       : 'Fair enough. Read why others want him to run, and come back any time.';
-    if (typeof yes === 'number') $('#yesCount').textContent = yes.toLocaleString();
+    if (typeof yes === 'number') paintYes(yes);
   }
   const prior = store.get('pledge', null);
   if (prior) showAsked(prior);
@@ -251,7 +251,7 @@
     y += 20; const lines = wrap('“' + q + '”', W - 144).slice(0, 7);
     for (const l of lines) { cx.fillText(l, 72, y); y += size * 1.32; }
     // byline
-    const name = $('#firstName').value.trim() || store.get('name', '') || 'Your name';
+    const name = ($('#firstName').value.trim() || store.get('name', '')).split(/\s+/)[0] || 'Your name';
     const st = $('#state').value; const stName = st === 'Abroad' ? 'abroad' : (STATE_NAME[st] || 'your state');
     cx.fillStyle = '#FF4757'; cx.font = '700 34px Inter, sans-serif'; cx.fillText('— ' + name + ', ' + stName, 72, Math.min(y + 30, H - 170));
     // footer
@@ -266,10 +266,41 @@
   (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => drawCard());
 
   // ---------- tally ----------
+  // ---------- live tally ----------
+  // Counts up on load, re-checks every 20 s while the tab is open, and flashes "+N just now"
+  // when real people back Jon. No fake activity: every number comes from the server.
+  let shownYes = null;
+  function countTo(el, from, to, ms) {
+    const t0 = performance.now();
+    const step = (t) => {
+      const k = Math.min(1, (t - t0) / ms), e = 1 - Math.pow(1 - k, 3);
+      el.textContent = Math.round(from + (to - from) * e).toLocaleString();
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+  function ago(iso) {
+    const m = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
+    if (m < 1) return 'just now';
+    if (m < 60) return m + ' min ago';
+    const h = Math.round(m / 60); if (h < 24) return h + (h === 1 ? ' hour ago' : ' hours ago');
+    const d = Math.round(h / 24); return d + (d === 1 ? ' day ago' : ' days ago');
+  }
+  function paintYes(n) {
+    const el = $('#yesCount');
+    if (shownYes === null) countTo(el, 0, n, 1400);
+    else if (n > shownYes) {
+      countTo(el, shownYes, n, 900);
+      const f = $('#yesFlash'); f.textContent = '+' + (n - shownYes) + ' just now';
+      f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
+      el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+    } else el.textContent = n.toLocaleString();
+    shownYes = n;
+  }
   async function loadStats() {
     try {
       const s = await api.stats();
-      $('#yesCount').textContent = s.yes.toLocaleString();
+      paintYes(s.yes);
       $('#tYes').textContent = s.yes.toLocaleString();
       $('#tStories').textContent = s.stories.toLocaleString();
       const by = Object.fromEntries((s.states || []).map(r => [r.state, r.n]));
@@ -278,8 +309,15 @@
       $('#heroStates').textContent = on.length;
       $('#heroStateList').textContent = on.sort((a, b) => by[b[0]] - by[a[0]]).map(([c]) => c).join(' · ');
       $('#stateGrid').innerHTML = STATES.map(([c, n]) => `<div class="st${by[c] ? ' on' : ''}" title="${n}: ${by[c] || 0}">${c}<small>${by[c] || 0}</small></div>`).join('');
-    } catch { $('#stateGrid').innerHTML = '<p>Tally unavailable right now.</p>'; }
+      const bits = [];
+      if (s.latestAt && Date.now() - Date.parse(s.latestAt) < 30 * 864e5) bits.push('Latest: ' + ago(s.latestAt));
+      if (s.last24h) bits.push(s.last24h.toLocaleString() + ' in the last 24 hours');
+      $('#liveLine').hidden = !bits.length;
+      $('#liveText').textContent = bits.join(' · ');
+    } catch { if (!$('#stateGrid').innerHTML) $('#stateGrid').innerHTML = '<p>Tally unavailable right now.</p>'; }
   }
+  setInterval(() => { if (!document.hidden) loadStats(); }, 20000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) loadStats(); });
 
   // ---------- wall ----------
   async function loadWall() {
@@ -290,7 +328,7 @@
         <article class="post">
           ${p.headline ? `<h3>${esc(p.headline)}</h3>` : ''}
           <blockquote>“${esc(p.text)}”</blockquote>
-          <p class="by">— ${esc(p.first_name)}, ${esc(p.state === 'Abroad' ? 'abroad' : (STATE_NAME[p.state] || p.state))}</p>
+          <p class="by">— ${esc(String(p.first_name || '').trim().split(/\s+/)[0])}, ${esc(p.state === 'Abroad' ? 'abroad' : (STATE_NAME[p.state] || p.state))}</p>
           ${pubTags(p.tags).length ? `<div class="tags">${pubTags(p.tags).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
         </article>`).join('');
     } catch { $('#wallGrid').innerHTML = '<p class="empty">The wall can’t be reached right now.</p>'; }
