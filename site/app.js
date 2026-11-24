@@ -297,6 +297,14 @@
     } else el.textContent = n.toLocaleString();
     shownYes = n;
   }
+  let shownStates = null;
+  function paintStates(n) {
+    const el = $('#heroStates');
+    if (shownStates === null) countTo(el, 0, n, 1400);
+    else if (n > shownStates) { countTo(el, shownStates, n, 900); el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+    else el.textContent = n;
+    shownStates = n;
+  }
   async function loadStats() {
     try {
       const s = await api.stats();
@@ -306,9 +314,14 @@
       const by = Object.fromEntries((s.states || []).map(r => [r.state, r.n]));
       const on = STATES.filter(([c]) => by[c]);
       $('#tStates').textContent = on.length;
-      $('#heroStates').textContent = on.length;
-      $('#heroStateList').textContent = on.sort((a, b) => by[b[0]] - by[a[0]]).map(([c]) => c).join(' · ');
-      $('#stateGrid').innerHTML = STATES.map(([c, n]) => `<div class="st${by[c] ? ' on' : ''}" title="${n}: ${by[c] || 0}">${c}<small>${by[c] || 0}</small></div>`).join('');
+      paintStates(on.length);
+      // Leading state(s): the highest count gets a pulsing badge in the hero and a glowing tile on the map.
+      const max = Math.max(0, ...on.map(([c]) => by[c]));
+      const ranked = on.sort((a, b) => by[b[0]] - by[a[0]]);
+      $('#heroStateList').innerHTML = ranked.map(([c, n]) => by[c] === max
+        ? `<span class="lead-st" title="Leading: ${esc(n)}">★ ${c} <b>${by[c]}</b></span>`
+        : c).join(' · ');
+      $('#stateGrid').innerHTML = STATES.map(([c, n]) => `<div class="st${by[c] ? ' on' : ''}${by[c] && by[c] === max ? ' lead-tile' : ''}" title="${n}: ${by[c] || 0}">${c}<small>${by[c] || 0}</small></div>`).join('');
       const bits = [];
       if (s.latestAt && Date.now() - Date.parse(s.latestAt) < 30 * 864e5) bits.push('Latest: ' + ago(s.latestAt));
       if (s.last24h) bits.push(s.last24h.toLocaleString() + ' in the last 24 hours');

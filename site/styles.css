@@ -277,3 +277,13 @@ small{font-weight:400;color:var(--muted)}
 .live .dot{width:9px;height:9px;border-radius:50%;background:#1E8E4E;box-shadow:0 0 0 0 rgba(30,142,78,.6);animation:pulse 1.8s infinite}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(30,142,78,.55)}70%{box-shadow:0 0 0 9px rgba(30,142,78,0)}100%{box-shadow:0 0 0 0 rgba(30,142,78,0)}}
 @media (prefers-reduced-motion:reduce){.live .dot,#yesCount.bump,.flash.go{animation:none}.flash.go{opacity:1}}
+
+/* leading state */
+#heroStates.bump{animation:bump .6s ease}
+.lead-st{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;background:var(--red);color:#fff;font-weight:700;animation:leadpulse 2.2s ease-in-out infinite}
+.lead-st b{font-weight:800}
+@keyframes leadpulse{0%,100%{box-shadow:0 0 0 0 rgba(178,34,52,.5)}50%{box-shadow:0 0 0 7px rgba(178,34,52,0)}}
+.state-grid .st.lead-tile{position:relative;animation:toptile 2.2s ease-in-out infinite;z-index:1}
+.state-grid .st.lead-tile::after{content:"★";position:absolute;top:-9px;right:-6px;font-size:15px;color:#FFD34E;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+@keyframes toptile{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(255,71,87,.6)}50%{transform:scale(1.08);box-shadow:0 0 0 8px rgba(255,71,87,0)}}
+@media (prefers-reduced-motion:reduce){.lead-st,.state-grid .st.lead-tile,#heroStates.bump{animation:none}}
