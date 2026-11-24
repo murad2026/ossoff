@@ -77,7 +77,7 @@
     $('#askButtons').hidden = true;
     $('#askDone').hidden = false;
     $('#askThanks').textContent = answer === 'yes'
-      ? 'Counted. Thank you — you just took step one.'
+      ? 'Your name is in the count. Thank you — you just took step one.'
       : 'Fair enough. Read why others want him to run, and come back any time.';
     if (typeof yes === 'number') $('#yesCount').textContent = yes.toLocaleString();
   }
@@ -273,7 +273,10 @@
       $('#tYes').textContent = s.yes.toLocaleString();
       $('#tStories').textContent = s.stories.toLocaleString();
       const by = Object.fromEntries((s.states || []).map(r => [r.state, r.n]));
-      $('#tStates').textContent = STATES.filter(([c]) => by[c]).length;
+      const on = STATES.filter(([c]) => by[c]);
+      $('#tStates').textContent = on.length;
+      $('#heroStates').textContent = on.length;
+      $('#heroStateList').textContent = on.sort((a, b) => by[b[0]] - by[a[0]]).map(([c]) => c).join(' · ');
       $('#stateGrid').innerHTML = STATES.map(([c, n]) => `<div class="st${by[c] ? ' on' : ''}" title="${n}: ${by[c] || 0}">${c}<small>${by[c] || 0}</small></div>`).join('');
     } catch { $('#stateGrid').innerHTML = '<p>Tally unavailable right now.</p>'; }
   }

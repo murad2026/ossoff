@@ -245,3 +245,23 @@ small{font-weight:400;color:var(--muted)}
 .foot-links{margin:0 0 10px;font-weight:600}
 .foot-links a{color:var(--ink)}
 .ask-state-ok{margin:10px 0 0;font-weight:600;color:#7CD992;min-height:1.2em}
+
+/* live count in the hero */
+.ask-tally{display:flex;gap:clamp(16px,3vw,32px);text-decoration:none;color:var(--navy);margin:0 0 6px}
+.ask-tally .at-n{display:flex;flex-direction:column}
+.ask-tally b{font-family:var(--display);font-weight:700;font-size:clamp(40px,4.4vw,56px);line-height:1;color:var(--red);font-variant-numeric:tabular-nums}
+.ask-tally small{font-size:14px;font-weight:600;color:#4A5A74;text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+.ask-states{margin:0 0 14px;font-size:14px;font-weight:600;letter-spacing:.5px;color:#4A5A74;min-height:1em}
+.ask-states:empty{display:none}
+.wall-cta{text-align:center;margin:24px 0 0}
+/* keep the count, the question and the Yes button above the fold on laptop screens */
+@media (min-width:901px) and (max-height:1000px){
+  .hero h1{font-size:clamp(40px,min(5vw,6.6vh),92px)}
+  .hero .slogan{margin:6px 0 14px;font-size:22px}
+  .hero-inner{padding-top:clamp(20px,3.5vh,48px)}
+  .ask{padding:20px 26px 22px}
+  .ask-q{font-size:24px;margin-bottom:14px}
+  .ask-tally b{font-size:44px}
+  .ask-states{margin-bottom:10px}
+  .ask-count{margin-top:12px}
+}
